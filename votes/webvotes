@@ -1,0 +1,17 @@
+[Unit]
+Description=voting webserver
+After=syslog.target 
+
+[Service]
+Type=simple
+User=web
+WorkingDirectory=/home/web/NN/votes
+
+Environment=PATH=/home/web/anaconda3/bin:/usr/local/cuda:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ExecStart=/home/web/anaconda3/bin/python -W ignore server.py
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
+
