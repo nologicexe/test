@@ -77,6 +77,8 @@ for i in range(steps):
     if(minSignal > 1000 and maxSpectre > 2000000):
         Y[freqID] = -10000000
         print(freqID, i)
+    else:
+        Y = np.ones(xlim)*-5000000
     spectrogram[i] = Y
 
 print(spectrogram[140])
