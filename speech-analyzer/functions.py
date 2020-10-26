@@ -11,16 +11,11 @@ def noFileType(filePath):
     return stripFile, fileType
 
 def signalNormalization(signal, percentile, normValue):
-    print("Sorting...")
     sorted = np.sort(np.abs(signal))
-    print("Sorting complete")
     normIndex = int(len(signal)*percentile)-1
     norm = np.abs(sorted[normIndex])
     multiplier = normValue/norm
-    print("Multiplier = ", multiplier)
-    print("Applying multiplier...")
     output = signal*multiplier
-    print("Normalization complete.")
     return output
 
 def hzIndex(X, hz):
@@ -63,11 +58,13 @@ def catchingMax(X, Xmax, r, step):
     #print("iR, iStep = ", iR, iStep)
     sums = [0]
     xSums = [0]
+    IDs = [0]
     #print("X = ", X)
     #print("Xmax = ", Xmax)
     for i in range(iR, len(X), iStep):
         sum = 0
         xSums.append(X[i])
+        IDs.append(i)
         for j in range(1, min(8, len(X)//i)):
             left = X[i*j-iR]
             right = X[i*j+iR]
@@ -84,7 +81,46 @@ def catchingMax(X, Xmax, r, step):
     #plt.subplot(212)
     #plt.plot(xSums, sums)
     #plt.show()
-    return xSums, sums
+    return IDs, xSums, sums
+
+def resonance(X, Y, n, r):
+    hzStep = X[1]-X[0]
+    indexRadius = r // hzStep
+    Ymax = np.amax(Y)
+    MaxIndex = np.argmax(Y)
+    start = 0
+    end = len(X)-1
+    areaSum = np.zeros(n)
+    areaX = np.arange(1, n+1)
+    for i in range(1, n+1):
+        f1X = MaxIndex / i
+        if (X[int(f1X)] <= 60):
+            areaSum[i-1] = 0
+        else:
+            for j in range(1, n+1):
+                currentIndex = int(f1X*j)
+                a = int(max(0, currentIndex-indexRadius))
+                b = int(min(end+1, currentIndex+indexRadius+1))
+                #print("a, b = ", a, b)
+                areaSum[i-1] += sum(Y[a:b])
+        #areaSum[i-1] /= i
+    #plt.plot(areaX, areaSum)
+    #plt.show()
+    return areaX, areaSum
+
+def bendingMax(X, Y, r, step):
+    start = 0
+    end = len(Y)
+    n = 1+(end-1)//step
+    outX = np.zeros(n)
+    outY = np.zeros(n)
+    for i in range(0, n):
+        left = max(0, i*step - r)
+        right = min(i*step+r+1, end)
+        outX[i] = X[i*step]
+        outY[i] = max(Y[left:right])
+    return outX, outY
+
 
 #----------needs review and evaluation------------
 def countPicks(a, threshold):
