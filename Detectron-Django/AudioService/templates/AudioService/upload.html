@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>
+        Upload a File
+    </title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'AudioService/site.css' %}" />
+</head>
+
+<body>
+    {% load static %}
+    {% block content %}
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
+        {% csrf_token %}
+        <input type="file" name="myfile" accept="audio/*|video/*">
+        <button type="submit">Upload</button>
+    </form>
+    {% endblock %}
+</body>
+
+</html>
