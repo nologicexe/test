@@ -1,5 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
+from os import path
+from scipy.io.wavfile import read, write
+from numpy.fft import fft, ifft
 
 def noFileType(filePath):
     splited = filePath.split(".")
@@ -160,3 +164,203 @@ def removeRepeat(a):
             #print(output)
         prev = next
     return output
+
+
+
+
+
+#-------------------------------NEW----------------------------------
+
+
+
+
+
+def get_args():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("audio", type=str, default="", help="path to input video file")
+    ap.add_argument("-l", "--limit", type=int, default=None, help="frame processing limit")
+
+    args = vars(ap.parse_args())
+    filename = args["audio"]
+    limit = args["limit"]
+    ifLim = (limit is not None)
+    return filename, limit, ifLim
+
+def get_data(filename, ifLim=False, limit=0):
+    #-------Extracting single channel audio wav file-------
+    # print(filename)
+    stripFile, fileType = noFileType(filename)
+    if (fileType == 'mp4'):
+        if not (path.exists(stripFile +".wav")):
+            #print("Extracting audio from video")
+            clip = mp.VideoFileClip(filename)
+            clip.audio.write_audiofile(stripFile + '.wav')
+
+    sRate, data = read(stripFile + '.wav')
+    if (len(data.shape) > 1):
+        data = data[:, 0] #звук двухканальный, оставляем только один
+    time = np.arange(0, len(data)/sRate, 1/sRate)
+    data = signalNormalization(data, 0.95, 10000)
+    if (ifLim and len(data)/sRate > limit):
+        data = data[:sRate*limit]
+    return sRate, data
+
+def get_spectrogram(sRate, data, frame_size, steps, ifLim, limit):
+    #-------Calculating spectrum--------
+    #print(sRate)
+    frame_size = sRate//8
+    if (ifLim and limit < steps):
+        steps = limit
+    timeStep = frame_size/sRate
+    timeArray = np.arange(0, timeStep*steps, timeStep)
+    dt = 1/sRate
+    freq_vector = np.fft.rfftfreq(frame_size, d=dt)
+    xlim = hzIndex(freq_vector, 2000)
+    X = freq_vector[:xlim]
+    spectrogram = np.zeros((steps, xlim))
+    #print("frame_size = ", frame_size)
+    #print("len)freq) = ", len(freq_vector))
+    #print("steps = ", steps)
+    #print("Applying fast fourier transform")
+    for i in range(steps):
+        #print(str(i+1) + "/" + str(steps), end="\r")
+        signal = data[i*frame_size:(i+1)*frame_size]
+        Y = np.fft.rfft(signal)
+        Y = np.abs(Y[:xlim])
+        spectrogram[i] = Y
+    return spectrogram, X, timeArray
+
+def get_formants(spectrogram, X, steps):
+    #--------Caluculating 1st formant------------
+    #print("Calculating 1st formants")
+    formantFreq = np.zeros(steps)
+    formantID = np.zeros(steps)
+    formantValue = np.zeros(steps)
+    for i in range(steps):
+        #print(str(i+1) + "/" + str(steps), end="\r")
+        Y = spectrogram[i]
+        stepX, stepTrueX, stepMax = steppingMax(X, Y, 200, 100)
+        IDs, xmax, maxes = catchingMax(X, stepTrueX, 25, 1)
+        freqID = IDs[np.argmax(maxes)]
+        formantID[i] = freqID
+        formantFreq[i] = xmax[np.argmax(maxes)]
+        formantValue[i] = Y[freqID]
+    return formantID, formantFreq, formantValue
+
+def get_good(data, steps, frame_size, spectrogram):
+    #--------caluculating good frames----------------
+    #print("Calculating good frames")
+    signalMins = np.zeros(steps)
+    SpectrumMaxes = np.zeros(steps)
+    goodness = np.zeros(steps)
+    for i in range(steps):
+        #print(str(i+1) + "/" + str(steps), end="\r")
+        signal = data[i*frame_size:(i+1)*frame_size]
+        Xsignal = np.arange(i*frame_size, (i+1)*frame_size)
+        bendingX, bendingY = bendingMax(Xsignal, signal, 500, 100)
+        smin = np.min(bendingY)
+        smax = np.max(spectrogram[i])
+        signalMins[i] = smin
+        SpectrumMaxes[i] = smax
+        if (smin > 1000 and smax > 2000000):
+            goodness[i] = 1
+
+    goodSum = 0
+    for x in goodness:
+        if x:
+            goodSum += 1
+            #print("Good frames: ", goodSum)
+    return goodness, goodSum, signalMins, SpectrumMaxes
+
+def plot_bend(data, steps, frame_size, signalMins, SpectrumMaxes):
+    signal = data[:steps*frame_size]
+    Xsignal = np.linspace(0, steps, steps*frame_size)
+    plt.plot(Xsignal, np.abs(signal), '-', color=(0.0, 0.0, 1.0, 0.5))
+    bendX, bendY = bendingMax(Xsignal, np.abs(signal), 200, 100)
+    plt.plot(bendX, bendY, '.-', color=(1.0, 0.5, 0.5, 1.0))
+    plt.show()
+
+    plt.plot(np.linspace(0, steps, steps*frame_size), data[:steps*frame_size], '-', color=(0.0, 0.0, 1.0, 0.5))
+    plt.plot([0, len(signalMins)], [0, 0], '-', color=(0.2, 0.2, 0.2))
+    plt.plot(np.arange(0.5, len(signalMins)+0.5), signalMins, '.-', color=(1.0, 0.0, 0.0, 1.0))
+    plt.plot([0, len(signalMins)], [1000, 1000], '-', color=(1.0, 0.0, 0.0, 0.5))
+    plt.plot(np.arange(0.5, len(signalMins)+0.5), SpectrumMaxes/1000, '-', color=(0.0, 1.0, 0.0, 1.0))
+    plt.plot([0, len(SpectrumMaxes)], [2000, 2000], '-', color=(0.0, 1.0, 0.0, 0.5))
+    plt.grid(axis='x', linestyle='-')
+    plt.xticks(np.arange(0, len(signalMins)))
+    plt.show()
+
+def plot_freq_response(formantFreq, formantValue, goodness):
+    #-------frequency response--------------
+    freqResponse = np.array([formantFreq, formantValue, goodness])
+    goodFreqResponse = np.array([i for i in freqResponse.T if i[2] != 0])
+    plt.plot(*goodFreqResponse.T[0:2], '.')
+    plt.show()
+
+def plot_spectrogram(timeArray, X, spectrogram, formantID):
+    #------plotting spectrogram-----------
+    fig, ax = plt.subplots(figsize=(20, 10))
+    t = timeArray
+    w = X
+    xv, yv = np.meshgrid(t, w)
+    z = spectrogram
+    for i in range(len(z)):
+        if( formantID[i] != 0 ):
+            id = int(formantID[i])
+            z[i][id] = -10000000
+    z = z.T
+    c = ax.pcolormesh(xv, yv, z, cmap="RdBu", vmin=-10000000, vmax=10000000)
+    ax.axis([t.min(), t.max(), w.min(), w.max()])
+    fig.colorbar(c, ax=ax)
+    plt.show()
+
+def postprocessing(spectrogram, X, data, frame_size):
+    #-------Postprocessing--------------
+    k = 0
+    plotStart = 0
+    plotEnd = 100
+    for i in np.arange(plotStart, plotEnd):
+        Y = np.abs(spectrogram[i])
+        Ymax = np.amax(Y)
+        maxIndex = np.argmax(Y)
+        lines = np.array([X[maxIndex], X[maxIndex]])
+        stepX, stepTrueX, stepMax = steppingMax(X, Y, 200, 100)
+        IDs, xmax, maxs = catchingMax(X, stepTrueX, 25, 1)
+        freq = xmax[np.argmax(maxs)]
+
+        plt.figure(figsize=(20,10))
+        plt.subplot(311)
+        plt.plot(X, Y, "-", color=(0.7, 0.7, 0.7))
+        plt.plot(X[maxIndex], Ymax, "g.")
+        plt.ylim(0,10000000)
+        plt.xlim(X[0], X[-1])
+        plt.plot(stepX, stepMax, ".", color=(1.0, 0.7, 0.7))
+        plt.plot(stepTrueX, stepMax, '.', color=(0.0, 0.5, 0.0))
+        for j in range(1, 9):
+            plt.plot([freq*j-25, freq*j, freq*j+25], [0,0,0], "r.-")
+
+            plt.subplot(312)
+            plt.plot(xmax, maxs)
+
+            audRange = 4
+            chunkStart = max(0, frame_size*(i-audRange))
+            chunkEnd = min(len(data), frame_size*(i+1+audRange))
+            frameStart = max(0, frame_size*i)
+            frameEnd = min(len(data), frame_size*(i+1))
+            dataX = np.arange(chunkStart,chunkEnd)
+            dataChunk = data[chunkStart:chunkEnd]
+            frameX = np.arange(frameStart, frameEnd)
+            frameY = data[frameStart:frameEnd]
+            bendingX, bendingY = bendingMax(frameX, frameY, 500, 100)
+            minSignal = np.min(bendingY)
+            plt.subplot(313)
+            plt.plot([dataX[0], dataX[-1]], [0, 0], "-", color=(0.2, 0.2, 0.2))
+            plt.plot(dataX, dataChunk)
+            if (minSignal > 1000 and Ymax > 2000000):
+                print("freq = ", freq)
+                plt.title("good", color=(0.0, 1.0, 0.0))
+            else:
+                plt.title("bad", color=(1.0, 0.0, 0.0))
+                plt.plot(bendingX, bendingY)
+                plt.plot([frame_size*i, frame_size*(i+1)], [0,0])
+                plt.show()
