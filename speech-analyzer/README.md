@@ -1,6 +1,6 @@
 # Speech analyzer
 
-Extracts formants from video
+Extracts formants and speech speed from video
 
 ## Tech
 python 3.8.6
