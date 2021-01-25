@@ -46,18 +46,18 @@ else:
     for i in range(lenght):
         if i > 10000:
             break
-        ret, frame = func.getFrame(vid)
+        ret, frame = func.getFrame(vid, size=2000)
         if not ret:
             break
         landmarkData[i] = func.landmarkFrame(frame)
         #print(landmarkData[i])
         facePosData[i] = func.facePos(landmarkData[i])
-        func.drawLandmark(frame, landmarkData[i])
+        func.drawLandmark(frame, landmarkData[i], showID=True)
         func.drawFacePos(frame, facePosData[i], landmarkData[i])
-        #cv2.imshow("test", frame)
-        #key = cv2.waitKey(1)
-        #if (key == ord('q')):
-        #    break
+        cv2.imshow("test", frame)
+        key = cv2.waitKey(1)
+        if (key == ord('q')):
+           break
         func.printProgress("Processing frames:", i+1, lenght)
         out.write(frame)
 
