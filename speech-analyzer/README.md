@@ -11,12 +11,6 @@ with libraries:
 * cv2 4.5.1
 
 ## Installation
-
-```sh
-python3 -m venv env
-source env/bin/activate
-```
-
 ```sh
 pip3 install matplotlib
 pip3 install scipy

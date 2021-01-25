@@ -4,6 +4,7 @@ import argparse
 from os import path
 from scipy.io.wavfile import read, write
 from numpy.fft import fft, ifft
+import moviepy.editor as mp
 
 def noFileType(filePath):
     splited = filePath.split(".")
@@ -176,6 +177,7 @@ def removeRepeat(a):
 
 
 def get_args():
+    print("get_args():".ljust(20), end="", flush=True)
     ap = argparse.ArgumentParser()
     ap.add_argument("audio", type=str, default="", help="path to input video file")
     ap.add_argument("-l", "--limit", type=int, default=None, help="frame processing limit")
@@ -184,11 +186,12 @@ def get_args():
     filename = args["audio"]
     limit = args["limit"]
     ifLim = (limit is not None)
+    print("Complete.")
     return filename, limit, ifLim
 
 def get_data(filename, ifLim=False, limit=0):
     #-------Extracting single channel audio wav file-------
-    # print(filename)
+    print("get_data():".ljust(20), end="", flush=True)
     stripFile, fileType = noFileType(filename)
     if (fileType == 'mp4'):
         if not (path.exists(stripFile +".wav")):
@@ -203,14 +206,13 @@ def get_data(filename, ifLim=False, limit=0):
     data = signalNormalization(data, 0.95, 10000)
     if (ifLim and len(data)/sRate > limit):
         data = data[:sRate*limit]
+    print("Complete.")
     return sRate, data
 
-def get_spectrogram(sRate, data, frame_size, steps, ifLim, limit):
+def get_spectrogram(sRate, data, frame_size, steps):
     #-------Calculating spectrum--------
     #print(sRate)
     frame_size = sRate//8
-    if (ifLim and limit < steps):
-        steps = limit
     timeStep = frame_size/sRate
     timeArray = np.arange(0, timeStep*steps, timeStep)
     dt = 1/sRate
@@ -223,11 +225,12 @@ def get_spectrogram(sRate, data, frame_size, steps, ifLim, limit):
     #print("steps = ", steps)
     #print("Applying fast fourier transform")
     for i in range(steps):
-        #print(str(i+1) + "/" + str(steps), end="\r")
+        print("get_spectrogram():".ljust(20) + str(i+1) + "/" + str(steps), end="\r")
         signal = data[i*frame_size:(i+1)*frame_size]
         Y = np.fft.rfft(signal)
         Y = np.abs(Y[:xlim])
         spectrogram[i] = Y
+    print("get_spectrogram():".ljust(20) + "Complete.")
     return spectrogram, X, timeArray
 
 def get_formants(spectrogram, X, steps):
@@ -237,7 +240,7 @@ def get_formants(spectrogram, X, steps):
     formantID = np.zeros(steps)
     formantValue = np.zeros(steps)
     for i in range(steps):
-        #print(str(i+1) + "/" + str(steps), end="\r")
+        print("get_formants():".ljust(20) + str(i+1) + "/" + str(steps), end="\r")
         Y = spectrogram[i]
         stepX, stepTrueX, stepMax = steppingMax(X, Y, 200, 100)
         IDs, xmax, maxes = catchingMax(X, stepTrueX, 25, 1)
@@ -245,6 +248,7 @@ def get_formants(spectrogram, X, steps):
         formantID[i] = freqID
         formantFreq[i] = xmax[np.argmax(maxes)]
         formantValue[i] = Y[freqID]
+    print("get_formants():".ljust(20) + "Complete.")
     return formantID, formantFreq, formantValue
 
 def get_good(data, steps, frame_size, spectrogram):
@@ -254,7 +258,7 @@ def get_good(data, steps, frame_size, spectrogram):
     SpectrumMaxes = np.zeros(steps)
     goodness = np.zeros(steps)
     for i in range(steps):
-        #print(str(i+1) + "/" + str(steps), end="\r")
+        print("get_good():".ljust(20) + str(i+1) + "/" + str(steps), end="\r")
         signal = data[i*frame_size:(i+1)*frame_size]
         Xsignal = np.arange(i*frame_size, (i+1)*frame_size)
         bendingX, bendingY = bendingMax(Xsignal, signal, 500, 100)
@@ -264,7 +268,7 @@ def get_good(data, steps, frame_size, spectrogram):
         SpectrumMaxes[i] = smax
         if (smin > 1000 and smax > 2000000):
             goodness[i] = 1
-
+    print("get_good():".ljust(20) + "Complete.")
     goodSum = 0
     for x in goodness:
         if x:
