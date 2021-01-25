@@ -31,24 +31,30 @@ threshold = np.percentile(np.abs(data), 99)*0.25
 speech = np.array([int(y > threshold) for y in bY])
 
 interval = 15
+stepsInSec = sRate/step
 fullIntervals = len(data)//(sRate*interval)
 print(fullIntervals)
 silence = np.zeros(fullIntervals+1)
+words = np.zeros(fullIntervals+1)
 for i in range(len(speech)):
     #print(bX[i], (sRate*interval), bX[i]//(sRate*interval))
     silence[int(bX[i])//(sRate*interval)] += int(speech[i])
-silence /= (interval*sRate/step)
+    if(speech[i] != speech[max(0, i-1)]):
+        words[int(bX[i])//(sRate*interval)] += 1
 
-plt.plot(silence)
+silence /= stepsInSec
+
+plt.plot(words/silence)
+plt.title("Words per second")
 plt.show()
 
-for s in range(len(silence)-1):
-    print(s, silence[s])
-
-plt.plot(slice/sRate, np.abs(data))
-plt.plot(bX/sRate, bY)
-plt.plot(bX[[0, -1]]/sRate, [threshold]*2)
-plt.plot(bX/sRate, speech*max(data), color=(1.0, 0.0, 0.0, 0.5))
-plt.show()
+# for s in range(len(silence)-1):
+#     print(s, silence[s])
+#
+# plt.plot(slice/sRate, np.abs(data))
+# plt.plot(bX/sRate, bY)
+# plt.plot(bX[[0, -1]]/sRate, [threshold]*2)
+# plt.plot(bX/sRate, speech*max(data), color=(1.0, 0.0, 0.0, 0.5))
+# plt.show()
 
 #график пауз, численное соотношение паузы к непаузе в интервал временной (минута)
