@@ -79,14 +79,15 @@ else:
 
     start = 0
     end = step + overlap
-    func.plotBlinks(0, range(0, end), blinkData[start:end], blinks, fastBlinks, closedEyesStart, closedEyesEnd, threshold=threshold, savename=outputName+"_Data/graph")
+    func.plotBlinks(0, range(0, min(end, lenght)), blinkData[start:min(end, lenght)], blinks, fastBlinks, closedEyesStart, closedEyesEnd, threshold=threshold, savename=outputName+"_Data/graph")
     for i in range(1, lenght // step):
         start = i*step - overlap
         end = (i+1)*step + overlap
         func.plotBlinks(i, range(start, end), blinkData[start:end], blinks, fastBlinks, closedEyesStart, closedEyesEnd, threshold=threshold, savename=outputName+"_Data/graph")
-    start = (lenght//step)*step - overlap
-    end = lenght
-    func.plotBlinks(lenght//step+1, range(start, end), blinkData[start:end], blinks, fastBlinks, closedEyesStart, closedEyesEnd, threshold=threshold, savename=outputName+"_Data/graph")
+    if (lenght > step):
+        start = (lenght//step)*step - overlap
+        end = lenght
+        func.plotBlinks(lenght//step+1, range(start, end), blinkData[start:end], blinks, fastBlinks, closedEyesStart, closedEyesEnd, threshold=threshold, savename=outputName+"_Data/graph")
     #func.playback(frames, landmarkData, facePosData, goodFrames, blinkNormData, width=800)
     vid.release()
     cv2.destroyAllWindows()
