@@ -30,7 +30,7 @@ bX, bY = func.bendingMax(slice, np.abs(data), r=step, step=step)
 threshold = np.percentile(np.abs(data), 99)*0.25
 speech = np.array([int(y > threshold) for y in bY])
 
-interval = 60
+interval = 15
 fullIntervals = len(data)//(sRate*interval)
 print(fullIntervals)
 silence = np.zeros(fullIntervals+1)
@@ -38,6 +38,10 @@ for i in range(len(speech)):
     #print(bX[i], (sRate*interval), bX[i]//(sRate*interval))
     silence[int(bX[i])//(sRate*interval)] += int(speech[i])
 silence /= (interval*sRate/step)
+
+plt.plot(silence)
+plt.show()
+
 for s in range(len(silence)-1):
     print(s, silence[s])
 

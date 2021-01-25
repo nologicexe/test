@@ -19,6 +19,16 @@ pip3 install opencv-contrib-python
 ```
 
 ## Usage
+Speech speed:
 ```sh
-python3 main.py video.mp4
+python3 speechSpeed.py video.mp4
+```
+
+To save formant data to formants.npy:
+```sh
+python3 formants.py video.mp4
+```
+And to plot formant frequency plot:
+```sh
+python3 load.py
 ```
