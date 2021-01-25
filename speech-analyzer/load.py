@@ -1,14 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.io.wavfile import read, write
-from numpy.fft import fft, ifft
-import argparse
-import moviepy.editor as mp
-import cv2
-import scipy
-from os import path
-import math
-import functions as func
 
 a = np.load('formants.npy')
 goodness, formantFreq, formantValue = a
